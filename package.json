@@ -25,7 +25,10 @@
   "author": "YourNameOrOrganization",
   "license": "MIT",
   "dependencies": {
-    "@actions/core": "^1.2.0"
+    "@actions/core": "^1.2.0",
+    "@octokit/rest": "^17.0.0",
+    "@octokit/webhooks": "^7.1.0",
+    "simple-git": "^1.131.0"
   },
   "devDependencies": {
     "@types/jest": "^24.0.23",

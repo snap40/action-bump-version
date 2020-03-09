@@ -1,10 +1,9 @@
-name: 'Your name here'
-description: 'Provide a description here'
-author: 'Your name or organization here'
+name: 'Bump version on merge'
+description: ''
 inputs:
-  myInput:              # change this
-    description: 'input description here'
-    default: 'default value if applicable'
+  event:
+    description: 'The event which triggered this action'
+    required: true
 runs:
   using: 'node12'
   main: 'dist/index.js'
