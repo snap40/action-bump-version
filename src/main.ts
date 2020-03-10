@@ -1,11 +1,14 @@
 import * as core from '@actions/core';
 import fs from 'fs';
 import {WebhookPayloadPullRequest} from '@octokit/webhooks';
-import childProcess from 'child_process';
-import path from 'path';
 import simplegit, {SimpleGit} from 'simple-git/promise';
+import semver from 'semver';
 
-const VERSION_BUMP_TRIGGERS = ['#major', '#minor', '#patch'];
+const TRIGGERS_TO_RELEASE_TYPES: {[trigger: string]: semver.ReleaseType} = {
+    '#major': 'major',
+    '#minor': 'minor',
+    '#patch': 'patch'
+};
 
 async function run(): Promise<void> {
     const git: SimpleGit = simplegit();
@@ -22,7 +25,7 @@ async function run(): Promise<void> {
         const eventJson = core.getInput('event');
         const payload: WebhookPayloadPullRequest = JSON.parse(eventJson);
 
-        let versionBump: string | undefined = undefined;
+        let releaseType: semver.ReleaseType = 'minor';
 
         if (!(payload.action === 'closed' && payload.pull_request.merged)) {
             return;
@@ -31,37 +34,28 @@ async function run(): Promise<void> {
         await git.checkout(payload.pull_request.base.ref);
 
         // Check for `#major`/`#minor`/`#patch` in PR body
-        for (const trigger of VERSION_BUMP_TRIGGERS) {
+        for (const trigger in TRIGGERS_TO_RELEASE_TYPES) {
             if (payload.pull_request.body.includes(trigger)) {
-                versionBump = trigger.replace('#', '');
+                releaseType = TRIGGERS_TO_RELEASE_TYPES[trigger];
                 break;
             }
         }
 
-        // TODO: Check for `#major`/`#minor`/`#patch` in merge commit?
+        const versionFile = core.getInput('version_file');
+        const oldVersion = fs.readFileSync(versionFile).toString();
+        const newVersion = semver.inc(oldVersion, releaseType);
 
-        versionBump = versionBump || 'minor';
+        if (!newVersion) {
+            throw {
+                message: `Could not bump ${releaseType} version ${oldVersion}; returned null`
+            };
+        }
 
-        childProcess.execSync(`./gradlew -P release-type=${versionBump} bump-version`);
-
-        const tempDir = fs.mkdtempSync('gradle-scripts');
-        const tempFile = path.join(tempDir, 'init.gradle');
-        fs.writeFileSync(
-            tempFile,
-            `rootProject {
-  task 'dumpVersion' {
-    println version
-  }
-}`
-        );
-        const newVersion = childProcess.execSync(`./gradlew -I ${tempFile} dumpVersion`).toString();
-        fs.rmdirSync(tempDir);
-
-        await git.commit(`Bumped ${versionBump} version to ${newVersion}`);
+        await git.commit(`Bumped ${releaseType} version to ${newVersion}`);
         await git.push();
 
         core.setOutput('newVersion', newVersion);
-        core.setOutput('versionBump', versionBump);
+        core.setOutput('releaseType', releaseType);
     } catch (error) {
         core.setFailed(error.message);
     }
