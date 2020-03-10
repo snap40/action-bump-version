@@ -24,15 +24,14 @@ async function run(): Promise<void> {
 
         const eventJson = core.getInput('event');
         const payload: WebhookPayloadPullRequest = JSON.parse(eventJson);
-
-        let releaseType: semver.ReleaseType = 'minor';
-
         if (!(payload.action === 'closed' && payload.pull_request.merged)) {
             return;
         }
 
-        await git.checkout(payload.pull_request.base.ref);
+        const branchName = payload.pull_request.base.ref;
+        await git.checkout(branchName);
 
+        let releaseType: semver.ReleaseType = 'minor';
         // Check for `#major`/`#minor`/`#patch` in PR body
         for (const trigger in TRIGGERS_TO_RELEASE_TYPES) {
             if (payload.pull_request.body.includes(trigger)) {
@@ -51,8 +50,10 @@ async function run(): Promise<void> {
             };
         }
 
-        await git.commit(`Bumped ${releaseType} version to ${newVersion}`);
-        await git.push();
+        fs.writeFileSync(versionFile, newVersion);
+
+        await git.commit(`Bumped ${releaseType} version to ${newVersion}`, [versionFile]);
+        await git.push(undefined, branchName);
 
         core.setOutput('newVersion', newVersion);
         core.setOutput('releaseType', releaseType);

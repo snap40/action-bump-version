@@ -3408,11 +3408,12 @@ function run() {
             }
             const eventJson = core.getInput('event');
             const payload = JSON.parse(eventJson);
-            let releaseType = 'minor';
             if (!(payload.action === 'closed' && payload.pull_request.merged)) {
                 return;
             }
-            yield git.checkout(payload.pull_request.base.ref);
+            const branchName = payload.pull_request.base.ref;
+            yield git.checkout(branchName);
+            let releaseType = 'minor';
             // Check for `#major`/`#minor`/`#patch` in PR body
             for (const trigger in TRIGGERS_TO_RELEASE_TYPES) {
                 if (payload.pull_request.body.includes(trigger)) {
@@ -3428,8 +3429,9 @@ function run() {
                     message: `Could not bump ${releaseType} version ${oldVersion}; returned null`
                 };
             }
-            yield git.commit(`Bumped ${releaseType} version to ${newVersion}`);
-            yield git.push();
+            fs_1.default.writeFileSync(versionFile, newVersion);
+            yield git.commit(`Bumped ${releaseType} version to ${newVersion}`, [versionFile]);
+            yield git.push(undefined, branchName);
             core.setOutput('newVersion', newVersion);
             core.setOutput('releaseType', releaseType);
         }
