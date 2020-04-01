@@ -1,4 +1,4 @@
-name: 'Bump version on merge'
+name: 'Automatically bump version in specified file'
 description: ''
 inputs:
   event:

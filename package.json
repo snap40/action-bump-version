@@ -1,8 +1,8 @@
 {
-  "name": "typescript-action",
-  "version": "0.0.0",
+  "name": "action-bump-version",
+  "version": "0.0.1",
   "private": true,
-  "description": "TypeScript template action",
+  "description": "Automatically bump contents of version file",
   "main": "lib/main.js",
   "scripts": {
     "build": "tsc",
@@ -14,14 +14,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/actions/typescript-action.git"
+    "url": "git+https://github.com/snap40/action-bump-version.git"
   },
   "keywords": [
     "actions",
     "node",
     "setup"
   ],
-  "author": "YourNameOrOrganization",
+  "author": "Current Health",
   "license": "MIT",
   "dependencies": {
     "@actions/core": "^1.2.0",
@@ -34,7 +34,6 @@
   "devDependencies": {
     "@types/jest": "^24.0.23",
     "@types/node": "^12.7.12",
-    "@typescript-eslint/parser": "^2.8.0",
     "@zeit/ncc": "^0.20.5",
     "jest": "^24.9.0",
     "jest-circus": "^24.9.0",

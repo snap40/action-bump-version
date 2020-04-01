@@ -3392,11 +3392,12 @@ const fs_1 = __importDefault(__webpack_require__(747));
 const promise_1 = __importDefault(__webpack_require__(57));
 const semver_1 = __importDefault(__webpack_require__(876));
 const TRIGGERS_TO_RELEASE_TYPES = {
-    '#major': 'major',
-    '#minor': 'minor',
-    '#patch': 'patch'
+    '##major': 'major',
+    '##minor': 'minor',
+    '##patch': 'patch'
 };
 function run() {
+    var _a;
     return __awaiter(this, void 0, void 0, function* () {
         const git = promise_1.default();
         yield git.addConfig('user.name', core.getInput('username'));
@@ -3408,30 +3409,47 @@ function run() {
             }
             const eventJson = core.getInput('event');
             const payload = JSON.parse(eventJson);
-            if (!(payload.action === 'closed' && payload.pull_request.merged)) {
-                return;
-            }
-            const branchName = payload.pull_request.base.ref;
+            const versionFile = core.getInput('version_file');
+            yield git.fetch('origin');
+            const branchName = payload.pull_request.head.ref;
+            console.log(`Checking out ${branchName}`);
             yield git.checkout(branchName);
+            const base = payload.pull_request.base;
+            const trunkName = `origin/${base.ref}`;
+            console.log(`Checking out ${versionFile} on ${trunkName}`);
+            try {
+                yield git.checkout([`${trunkName}`, '--', versionFile]);
+            }
+            catch (err) {
+                console.warn(`Failed to check out ${versionFile} on ${trunkName}, presumably because this is the PR which introduces it. Keeping the version in ${branchName}.`, err);
+            }
             let releaseType = 'minor';
-            // Check for `#major`/`#minor`/`#patch` in PR body
+            // Check for `##major`/`##minor`/`##patch` in PR body
             for (const trigger in TRIGGERS_TO_RELEASE_TYPES) {
                 if (payload.pull_request.body.includes(trigger)) {
                     releaseType = TRIGGERS_TO_RELEASE_TYPES[trigger];
                     break;
                 }
             }
-            const versionFile = core.getInput('version_file');
-            const oldVersion = fs_1.default.readFileSync(versionFile).toString();
-            const newVersion = semver_1.default.inc(oldVersion, releaseType);
+            const oldVersion = fs_1.default
+                .readFileSync(versionFile)
+                .toString()
+                .trim();
+            const newVersion = (_a = semver_1.default.inc(oldVersion, releaseType)) === null || _a === void 0 ? void 0 : _a.trim();
             if (!newVersion) {
                 throw {
                     message: `Could not bump ${releaseType} version ${oldVersion}; returned null`
                 };
             }
+            console.log(`Bumping ${releaseType} version from ${oldVersion} (${trunkName}) to ${newVersion}`);
             fs_1.default.writeFileSync(versionFile, newVersion);
-            yield git.commit(`Bumped ${releaseType} version to ${newVersion}`, [versionFile]);
-            yield git.push(undefined, branchName);
+            const diffSummary = yield git.diffSummary(['--', versionFile]);
+            if (diffSummary.changed > 0) {
+                yield git.commit(`Bump ${releaseType} version from ${oldVersion} (${trunkName}) to ${newVersion}
+
+## AUTOMATIC VERSION BUMP ##`, [versionFile]);
+                yield git.push('origin', branchName);
+            }
             core.setOutput('newVersion', newVersion);
             core.setOutput('releaseType', releaseType);
         }
