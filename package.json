@@ -24,7 +24,7 @@
   "author": "Current Health",
   "license": "MIT",
   "dependencies": {
-    "@actions/core": "^1.2.0",
+    "@actions/core": "^1.2.6",
     "@octokit/rest": "^17.0.0",
     "@octokit/webhooks": "^7.1.0",
     "@types/semver": "^7.1.0",
